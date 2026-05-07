@@ -29,6 +29,42 @@ Aplicación móvil construida con **React Native** (Expo) diseñada para captura
 3.  Se guarda el punto en `ubicaciones.db` (SQLite local).
 4.  En la misma fracción de segundo, se intenta hacer un *Insert* hacia la tabla `ubicaciones` en Supabase. Si falla por falta de internet, el dato queda respaldado localmente.
 
+### Arquitectura de Sistema
+
+```mermaid
+graph TD
+    subgraph dispositivo ["1. Teléfono del Usuario"]
+        GPS["Satélite GPS"] -->|"Lectura"| TaskManager["Task Manager (Segundo Plano)"]
+        TaskManager -->|"Guarda Respaldo"| SQLite[("Base de Datos SQLite Local")]
+        TaskManager -->|"Post Request"| Internet{"¿Hay Internet?"}
+    end
+
+    subgraph supabase ["2. Nube (Supabase / PostgreSQL)"]
+        Ubicaciones[("Tabla: ubicaciones")]
+        Dispositivos[("Tabla: dispositivos (Push Tokens)")]
+        DatabaseTrigger["Database Trigger (Al Insertar Dato)"]
+        EdgeFunction["Edge Function (El 'Cerebro')"]
+    end
+
+    subgraph expo_servers ["3. Servicio de Entrega de Alertas"]
+        PushAPI(("API de Expo Push"))
+        PantallaFinal["Pantalla del Teléfono (Notificación)"]
+    end
+
+    %% Flujo de Inserción
+    Internet -- "Conexión Exitosa" --> Ubicaciones
+    Internet -- "Sin Conexión" --> SQLite
+    
+    %% Flujo Analítico
+    Ubicaciones -->|"Despierta"| DatabaseTrigger
+    DatabaseTrigger -->|"Lanza Script"| EdgeFunction
+    
+    %% Flujo de Alerta
+    Dispositivos -.->|"Provee Destinatario"| EdgeFunction
+    EdgeFunction -->|"Regla: ¡Se movió!"| PushAPI
+    PushAPI -->|"Envía Mensaje Push"| PantallaFinal
+```
+
 ---
 
 ## ⚙️ Requisitos para la Nube (Supabase)
