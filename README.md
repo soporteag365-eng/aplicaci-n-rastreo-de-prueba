@@ -1,50 +1,73 @@
-# Welcome to your Expo app 👋
+# 📍 Rastreador GPS Offline-First
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicación móvil construida con **React Native** (Expo) diseñada para capturar, almacenar y sincronizar datos de geolocalización en tiempo real, con una arquitectura altamente resiliente a la falta de conectividad a internet.
 
-## Get started
+## 🚀 Características Principales
 
-1. Install dependencies
+*   **Rastreo en Segundo Plano:** Utiliza `expo-location` y `expo-task-manager` para seguir capturando el trayecto del usuario incluso cuando la pantalla está apagada o la aplicación minimizada.
+*   **Arquitectura Offline-First:** Toda coordenada capturada se guarda inmediatamente en una base de datos **SQLite local** dentro del dispositivo, garantizando cero pérdida de datos en zonas sin cobertura.
+*   **Sincronización en la Nube:** Conectada a **Supabase (PostgreSQL)**. Al tener conexión a internet, los datos fluyen instantáneamente a la base de datos centralizada.
+*   **Identificación Silenciosa:** Cada dispositivo genera y almacena un UUID persistente (`AsyncStorage`) para identificar las rutas de distintos usuarios sin requerir un inicio de sesión manual.
+*   **Push Tokens:** Preparada para recibir alertas (ej: geocercas, movimiento anómalo) conectando el token del dispositivo a las *Edge Functions* de Supabase.
 
+---
+
+## 🛠️ Tecnologías Utilizadas
+
+*   **Frontend:** React Native, Expo SDK 54, React Navigation.
+*   **Base de Datos Local:** SQLite (Modo WAL activado para alta concurrencia de lectura/escritura).
+*   **Backend / Nube:** Supabase (BaaS sobre PostgreSQL).
+*   **Notificaciones:** Expo Notifications.
+*   **Distribución:** EAS Build (Generación de `.apk`).
+
+---
+
+## 📱 ¿Cómo funciona el flujo de datos?
+
+1.  El satélite GPS detecta un cambio de ubicación (configurado a 10 metros o 10 segundos).
+2.  La tarea de segundo plano (`locationTask.ts`) es despertada por el sistema operativo.
+3.  Se guarda el punto en `ubicaciones.db` (SQLite local).
+4.  En la misma fracción de segundo, se intenta hacer un *Insert* hacia la tabla `ubicaciones` en Supabase. Si falla por falta de internet, el dato queda respaldado localmente.
+
+---
+
+## ⚙️ Requisitos para la Nube (Supabase)
+
+Para desplegar este proyecto, debes crear las siguientes tablas en tu instancia de Supabase (sin Row Level Security para etapa de pruebas):
+
+**Tabla `ubicaciones`**
+*   `id` (int8) - Primary Key
+*   `dispositivo_id` (text)
+*   `latitud` (float8)
+*   `longitud` (float8)
+*   `fecha_hora` (timestamptz)
+
+**Tabla `dispositivos`**
+*   `dispositivo_id` (text) - Primary Key
+*   `push_token` (text)
+
+---
+
+## 💻 Desarrollo Local
+
+Para correr este proyecto en tu entorno local:
+
+1. Clona este repositorio.
+2. Instala las dependencias:
    ```bash
    npm install
    ```
-
-2. Start the app
-
+3. Inicia el servidor de desarrollo de Expo:
    ```bash
    npx expo start
    ```
+4. Usa la aplicación **Expo Go** en tu dispositivo físico para escanear el código QR (los simuladores no son recomendados para probar GPS en segundo plano ni notificaciones push).
 
-In the output, you'll find options to open the app in a
+---
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 📦 Compilación de APK (Android)
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+Para generar un archivo instalable para distribución en Android:
 ```bash
-npm run reset-project
+eas build -p android --profile preview
 ```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
